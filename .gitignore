@@ -4,3 +4,7 @@
 
 # jupyterlab files
 .ipynb_checkpoints
+
+# pixi environments
+.pixi
+*.egg-info
