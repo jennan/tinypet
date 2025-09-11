@@ -1,10 +1,4 @@
-# pixi environments
 .pixi
 *.egg-info
-
-# jupyterlab files
+__pycache__
 .ipynb_checkpoints
-
-# pixi environments
-.pixi
-*.egg-info
