@@ -6,7 +6,6 @@ from tinypet.core import Step, make_step_builder
 
 
 class SimpleOp(Step):
-
     def __init__(self, source, *args, **kwargs):
         super().__init__(source)
         self.args = args
@@ -24,7 +23,6 @@ class SimpleOp(Step):
 
 @make_step_builder
 class Identity(SimpleOp):
-
     def apply(self, data):
         return data
 
@@ -35,7 +33,6 @@ class Identity(SimpleOp):
 
 @make_step_builder
 class Rename(SimpleOp):
-
     def apply(self, data: xr.Dataset) -> xr.Dataset:
         return data.rename(*self.args, **self.kwargs)
 
@@ -53,14 +50,12 @@ class Rename(SimpleOp):
 
 @make_step_builder
 class Mean(SimpleOp):
-
     def apply(self, data: xr.Dataset) -> xr.Dataset:
         return data.mean(*self.args, **self.kwargs)
 
 
 @make_step_builder
 class Compute(SimpleOp):
-
     def apply(self, data: xr.Dataset) -> xr.Dataset:
         return data.compute(*self.args, **self.kwargs)
 

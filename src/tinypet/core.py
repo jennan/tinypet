@@ -5,7 +5,6 @@ from typing import Union
 
 
 class Source(ABC):
-
     @abstractmethod
     def __getitem__(self, key: Any) -> Any:
         pass
@@ -24,7 +23,6 @@ class Source(ABC):
 
 
 class Step(Source):
-
     def __init__(self, source):
         self.source = source
 
@@ -51,13 +49,14 @@ class Step(Source):
 
 
 class StepBuilder:
-
     def __init__(self, step_class, *args, **kwargs):
         self.step_class = step_class
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self, source: Union[Source, "StepBuilder", "VirtualBuilder"]) -> Union[Step, "VirtualBuilder"]:
+    def __call__(
+        self, source: Union[Source, "StepBuilder", "VirtualBuilder"]
+    ) -> Union[Step, "VirtualBuilder"]:
         if isinstance(source, StepBuilder):
             step = VirtualBuilder(source, self)
         elif isinstance(source, VirtualBuilder):
@@ -71,7 +70,6 @@ class StepBuilder:
 
 
 class VirtualBuilder:
-
     def __init__(self, *builders):
         self.builders = builders
 
@@ -91,10 +89,8 @@ class VirtualBuilder:
 
 
 def make_step_builder(cls):
-
     class NewBuilder(StepBuilder):
-
         def __init__(self, *args, **kwargs):
             super().__init__(cls, *args, **kwargs)
-    
+
     return NewBuilder

@@ -6,7 +6,6 @@ from tinypet.core import Source, Step, make_step_builder
 
 @make_step_builder
 class DateRange(Step):
-
     def __init__(self, source: Source, start=None, end=None):
         super().__init__(source)
         self.start = start
@@ -26,8 +25,7 @@ class DateRange(Step):
 
 @make_step_builder
 class Shuffle(Step):
-
-    def __init__(self, source: Source, seed = None):
+    def __init__(self, source: Source, seed=None):
         super().__init__(source)
         self._rng = np.random.default_rng(seed)
 

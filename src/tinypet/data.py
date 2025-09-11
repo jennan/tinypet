@@ -4,7 +4,6 @@ from tinypet.core import Source
 
 
 class XarraySource(Source):
-
     def __init__(self, dataset: xr.Dataset, dim: str):
         self.dataset = dataset
         self.dim = dim
