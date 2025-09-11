@@ -36,6 +36,19 @@ class Step(Source):
         # TODO enforce checking if key is in index?
         return self.source[key]
 
+    @property
+    def undo_builder(self) -> "StepBuilder":
+        raise NotImplementedError(f"Step {self} cannot be undone.")
+
+    def undo(self, n: int = 1) -> Union["StepBuilder", "VirtualBuilder"]:
+        # TODO allow list to explicitely skip some steps
+        undo_pipe = self.undo_builder
+        current_step = self
+        for i in range(1, n):
+            current_step = current_step.source
+            undo_pipe |= current_step.undo_builder
+        return undo_pipe
+
 
 class StepBuilder:
 
