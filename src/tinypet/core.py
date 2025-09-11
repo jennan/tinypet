@@ -1,6 +1,7 @@
 from typing import Any
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
+from typing import Union
 
 
 class Source(ABC):
@@ -43,9 +44,34 @@ class StepBuilder:
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(self, source: Source) -> Step:
-        # TODO handle case of other is a StepBuilder
-        return self.step_class(source, *self.args, **self.kwargs)
+    def __call__(self, source: Union[Source, "StepBuilder", "VirtualBuilder"]) -> Union[Step, "VirtualBuilder"]:
+        if isinstance(source, StepBuilder):
+            step = VirtualBuilder(source, self)
+        elif isinstance(source, VirtualBuilder):
+            step = VirtualBuilder(*source.builders, self)
+        elif isinstance(source, Source):
+            step = self.step_class(source, *self.args, **self.kwargs)
+        return step
+
+    def __ror__(self, other: Source) -> Step:
+        return self(other)
+
+
+class VirtualBuilder:
+
+    def __init__(self, *builders):
+        self.builders = builders
+
+    def __call__(self, source):
+        if isinstance(source, StepBuilder):
+            step = VirtualBuilder(source, *self.builders)
+        elif isinstance(source, VirtualBuilder):
+            step = VirtualBuilder(*source.builders, *self.builders)
+        elif isinstance(source, Source):
+            for builder in self.builders:
+                source = builder(source)
+            step = source
+        return step
 
     def __ror__(self, other: Source) -> Step:
         return self(other)
