@@ -1,6 +1,20 @@
+from collections.abc import Sequence
+
 import xarray as xr
 
 from tinypet.core import Source
+
+
+class Seq(Source):
+    def __init__(self, data: Sequence):
+        self.data = data
+
+    def __getitem__(self, key):
+        return self.data[key]
+
+    @property
+    def index(self):
+        return range(len(self.data))
 
 
 class XarraySource(Source):

@@ -3909,7 +3909,7 @@ packages:
 - pypi: .
   name: tinypet
   version: 0.1.0
-  sha256: 1fe6677aa6eeac1e8089d2f4396662b65f26b736af72891049b1e9f492ad54f7
+  sha256: f80a4f09cd3b9cef89a02009eb9cf40bc48e9597855d5397e2872b825b49d06c
   requires_python: '>=3.13'
   editable: true
 - conda: https://conda.anaconda.org/conda-forge/linux-64/tk-8.6.13-noxft_hd72426e_102.conda
