@@ -1,5 +1,7 @@
 from abc import abstractmethod
 
+import numpy as np
+import pandas as pd
 import xarray as xr
 
 from tinypet.core import Step, StepBuilder, make_step_builder
@@ -103,26 +105,41 @@ class Select(Step):
 
 @make_step_builder
 class ToDataArray(Step):
-    def __init__(self, source, coords):
+    def __init__(self, source, coords, index_coord):
         super().__init__(source)
         self.coords = coords
+        self.index_coord = index_coord
+        self.time_index = isinstance(
+            coords[index_coord].dtype, np.dtypes.TimeDelta64DType
+        )
 
     def __getitem__(self, key):
         arr = self.source[key]
         data = xr.DataArray(arr, coords=self.coords)
+        if self.time_index:
+            key = pd.to_datetime(key)
+        data.coords[self.index_coord] = data.coords[self.index_coord] + key
         return data
 
 
 @make_step_builder
 class ToNumpy(Step):
+    def __init__(self, source, index_coord=None):
+        super().__init__(source)
+        self.index_coord = index_coord
+
     def __getitem__(self, key):
         darr = self.source[key]
         return darr.data
 
     @property
     def undo_builder(self):
-        coords = next(iter(self.source)).coords
-        return ToDataArray(coords)
+        if self.index_coord is None:
+            raise NotImplementedError("Missing undo function.")
+        index0 = self.source.index[0]
+        coords = self.source[index0].coords
+        coords[self.index_coord] = coords[self.index_coord] - index0
+        return ToDataArray(coords, self.index_coord)
 
 
 class Op(StepBuilder):
@@ -144,4 +161,4 @@ class FunctionOp(SimpleOp):
         if self.undo_func is None:
             raise NotImplementedError("Missing undo function.")
         # TODO document that undo_func gets the same parameters as apply_func
-        return Op(self.undo_func, *self.args, undo=self.apply_func, **self.kwargs)
+        return Op(self.undo_func, *self.args, undo_func=self.apply_func, **self.kwargs)
