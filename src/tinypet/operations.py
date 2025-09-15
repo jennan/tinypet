@@ -23,8 +23,7 @@ class SimpleOp(Step):
         return data
 
 
-@make_step_builder
-class Identity(SimpleOp):
+class _Identity(SimpleOp):
     def apply(self, data):
         return data
 
@@ -33,8 +32,10 @@ class Identity(SimpleOp):
         return Identity()
 
 
-@make_step_builder
-class Rename(SimpleOp):
+Identity = make_step_builder(_Identity)
+
+
+class _Rename(SimpleOp):
     def apply(self, data: xr.Dataset) -> xr.Dataset:
         return data.rename(*self.args, **self.kwargs)
 
@@ -50,14 +51,18 @@ class Rename(SimpleOp):
         return Rename(**reverse_mapping)
 
 
-@make_step_builder
-class Mean(SimpleOp):
+Rename = make_step_builder(_Rename)
+
+
+class _Mean(SimpleOp):
     def apply(self, data: xr.Dataset) -> xr.Dataset:
         return data.mean(*self.args, **self.kwargs)
 
 
-@make_step_builder
-class Compute(SimpleOp):
+Mean = make_step_builder(_Mean)
+
+
+class _Compute(SimpleOp):
     def apply(self, data: xr.Dataset) -> xr.Dataset:
         return data.compute(*self.args, **self.kwargs)
 
@@ -66,14 +71,18 @@ class Compute(SimpleOp):
         return Identity()
 
 
-@make_step_builder
-class ToUnstackedDataset(SimpleOp):
+Compute = make_step_builder(_Compute)
+
+
+class _ToUnstackedDataset(SimpleOp):
     def apply(self, data: xr.Dataset) -> xr.DataArray:
         return data.to_unstacked_dataset(*self.args, **self.kwargs)
 
 
-@make_step_builder
-class ToStackedArray(SimpleOp):
+ToUnstackedDataset = make_step_builder(_ToUnstackedDataset)
+
+
+class _ToStackedArray(SimpleOp):
     def apply(self, data: xr.Dataset) -> xr.DataArray:
         return data.to_stacked_array(*self.args, **self.kwargs)
 
@@ -86,14 +95,18 @@ class ToStackedArray(SimpleOp):
         return ToUnstackedDataset(dim)
 
 
-@make_step_builder
-class Sel(SimpleOp):
+ToStackedArray = make_step_builder(_ToStackedArray)
+
+
+class _Sel(SimpleOp):
     def apply(self, data: xr.DataArray | xr.Dataset) -> xr.DataArray | xr.Dataset:
         return data.sel(*self.args, **self.kwargs)
 
 
-@make_step_builder
-class Select(Step):
+Sel = make_step_builder(_Sel)
+
+
+class _Select(Step):
     def __init__(self, source, varnames):
         super().__init__(source)
         self.varnames = list(varnames)
@@ -103,8 +116,10 @@ class Select(Step):
         return data
 
 
-@make_step_builder
-class ToDataArray(Step):
+Select = make_step_builder(_Select)
+
+
+class _ToDataArray(Step):
     def __init__(self, source, coords, index_coord):
         super().__init__(source)
         self.coords = coords
@@ -122,8 +137,10 @@ class ToDataArray(Step):
         return data
 
 
-@make_step_builder
-class ToNumpy(Step):
+ToDataArray = make_step_builder(_ToDataArray)
+
+
+class _ToNumpy(Step):
     def __init__(self, source, index_coord=None):
         super().__init__(source)
         self.index_coord = index_coord
@@ -142,12 +159,10 @@ class ToNumpy(Step):
         return ToDataArray(coords, self.index_coord)
 
 
-class Op(StepBuilder):
-    def __init__(self, apply_func, *args, undo_func=None, **kwargs):
-        super().__init__(FunctionOp, apply_func, *args, undo_func=undo_func, **kwargs)
+ToNumpy = make_step_builder(_ToNumpy)
 
 
-class FunctionOp(SimpleOp):
+class _Op(SimpleOp):
     def __init__(self, source, apply_func, *args, undo_func=None, **kwargs):
         super().__init__(source, *args, **kwargs)
         self.apply_func = apply_func
@@ -162,3 +177,8 @@ class FunctionOp(SimpleOp):
             raise NotImplementedError("Missing undo function.")
         # TODO document that undo_func gets the same parameters as apply_func
         return Op(self.undo_func, *self.args, undo_func=self.apply_func, **self.kwargs)
+
+
+class Op(StepBuilder):
+    def __init__(self, apply_func, *args, undo_func=None, **kwargs):
+        super().__init__(_Op, apply_func, *args, undo_func=undo_func, **kwargs)

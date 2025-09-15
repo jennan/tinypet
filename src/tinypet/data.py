@@ -7,6 +7,7 @@ from tinypet.core import Source
 
 class Seq(Source):
     def __init__(self, data: Sequence):
+        # TODO allow attaching an arbitrary index
         self.data = data
 
     def __getitem__(self, key):

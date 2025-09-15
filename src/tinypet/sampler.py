@@ -4,8 +4,7 @@ import pandas as pd
 from tinypet.core import Source, Step, make_step_builder
 
 
-@make_step_builder
-class DateRange(Step):
+class _DateRange(Step):
     def __init__(self, source: Source, start=None, end=None):
         super().__init__(source)
         self.start = start
@@ -23,8 +22,10 @@ class DateRange(Step):
         return index
 
 
-@make_step_builder
-class Shuffle(Step):
+DateRange = make_step_builder(_DateRange)
+
+
+class _Shuffle(Step):
     def __init__(self, source: Source, seed=None):
         super().__init__(source)
         self._rng = np.random.default_rng(seed)
@@ -34,3 +35,6 @@ class Shuffle(Step):
         index = self.source.index
         random_index = self._rng.permutation(index)
         return random_index
+
+
+Shuffle = make_step_builder(_Shuffle)
