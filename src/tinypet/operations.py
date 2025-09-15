@@ -17,8 +17,8 @@ class SimpleOp(Step):
     def apply(self, sample):
         pass
 
-    def __getitem__(self, key):
-        data = self.source[key]
+    def get(self, key):
+        data = self.source.get(key)
         data = self.apply(data)
         return data
 
@@ -111,8 +111,8 @@ class _Select(Step):
         super().__init__(source)
         self.varnames = list(varnames)
 
-    def __getitem__(self, key):
-        data = self.source[key][self.varnames]
+    def get(self, key):
+        data = self.source.get(key)[self.varnames]
         return data
 
 
@@ -128,8 +128,8 @@ class _ToDataArray(Step):
             coords[index_coord].dtype, np.dtypes.TimeDelta64DType
         )
 
-    def __getitem__(self, key):
-        arr = self.source[key]
+    def get(self, key):
+        arr = self.source.get(key)
         data = xr.DataArray(arr, coords=self.coords)
         if self.time_index:
             key = pd.to_datetime(key)
@@ -145,8 +145,8 @@ class _ToNumpy(Step):
         super().__init__(source)
         self.index_coord = index_coord
 
-    def __getitem__(self, key):
-        darr = self.source[key]
+    def get(self, key):
+        darr = self.source.get(key)
         return darr.data
 
     @property
@@ -154,7 +154,7 @@ class _ToNumpy(Step):
         if self.index_coord is None:
             raise NotImplementedError("Missing undo function.")
         index0 = self.source.index[0]
-        coords = self.source[index0].coords
+        coords = self.source.get(index0).coords
         coords[self.index_coord] = coords[self.index_coord] - index0
         return ToDataArray(coords, self.index_coord)
 

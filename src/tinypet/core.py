@@ -3,10 +3,18 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from typing import Union
 
+from numpy.dtypes import DateTime64DType
+import pandas as pd
+import xarray as xr
+
+
+def is_time_index(index):
+    return isinstance(index, xr.DataArray) and isinstance(index.dtype, DateTime64DType)
+
 
 class Source(ABC):
     @abstractmethod
-    def __getitem__(self, key: Any) -> Any:
+    def get(self, key: Any) -> Any:
         pass
 
     @property
@@ -14,25 +22,32 @@ class Source(ABC):
     def index(self) -> Sequence[Any]:
         pass
 
+    def __getitem__(self, key: Any) -> Any:
+        if is_time_index(self.index):
+            key = pd.to_datetime(key)
+        # TODO check speed of "in" for large unsorted index
+        if key not in self.index:
+            raise KeyError(f"Key '{key}' is not in the index of the source.")
+        return self.get(key)
+
     def __len__(self) -> int:
         return len(self.index)
 
     def __iter__(self) -> Any:
         for i in self.index:
-            yield self[i]
+            yield self.get(i)
 
 
 class Step(Source):
     def __init__(self, source):
         self.source = source
 
+    def get(self, key):
+        return self.source.get(key)
+
     @property
     def index(self):
         return self.source.index
-
-    def __getitem__(self, key):
-        # TODO enforce checking if key is in index?
-        return self.source[key]
 
     @property
     def undo_builder(self) -> "StepBuilder":

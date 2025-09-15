@@ -10,7 +10,7 @@ class Seq(Source):
         # TODO allow attaching an arbitrary index
         self.data = data
 
-    def __getitem__(self, key):
+    def get(self, key):
         return self.data[key]
 
     @property
@@ -23,7 +23,7 @@ class XarraySource(Source):
         self.dataset = dataset
         self.dim = dim
 
-    def __getitem__(self, key):
+    def get(self, key):
         return self.dataset.sel({self.dim: key})
 
     @property
