@@ -1,7 +1,5 @@
 from abc import abstractmethod
 
-import numpy as np
-import pandas as pd
 import xarray as xr
 
 from tinypet.core import Step, StepBuilder, make_step_builder
@@ -120,20 +118,15 @@ Select = make_step_builder(_Select)
 
 
 class _ToDataArray(Step):
-    def __init__(self, source, coords, index_coord):
+    def __init__(self, source, coords):
         super().__init__(source)
         self.coords = coords
-        self.index_coord = index_coord
-        self.time_index = isinstance(
-            coords[index_coord].dtype, np.dtypes.TimeDelta64DType
-        )
 
     def get(self, key):
         arr = self.source.get(key)
         data = xr.DataArray(arr, coords=self.coords)
-        if self.time_index:
-            key = pd.to_datetime(key)
-        data.coords[self.index_coord] = data.coords[self.index_coord] + key
+        if (index_coord := self.source.index.name) in data.coords:
+            data.coords[index_coord] = data.coords[index_coord] + key
         return data
 
 
@@ -141,9 +134,8 @@ ToDataArray = make_step_builder(_ToDataArray)
 
 
 class _ToNumpy(Step):
-    def __init__(self, source, index_coord=None):
+    def __init__(self, source):
         super().__init__(source)
-        self.index_coord = index_coord
 
     def get(self, key):
         darr = self.source.get(key)
@@ -151,12 +143,13 @@ class _ToNumpy(Step):
 
     @property
     def undo_builder(self):
-        if self.index_coord is None:
-            raise NotImplementedError("Missing undo function.")
+        assert isinstance(self.index, xr.DataArray)
         index0 = self.source.index[0]
-        coords = self.source.get(index0).coords
-        coords[self.index_coord] = coords[self.index_coord] - index0
-        return ToDataArray(coords, self.index_coord)
+        sample0 = self.source.get(index0)
+        coords = sample0.coords
+        if (index_coord := self.source.index.name) in coords:
+            coords[index_coord] = coords[index_coord] - index0
+        return ToDataArray(coords)
 
 
 ToNumpy = make_step_builder(_ToNumpy)

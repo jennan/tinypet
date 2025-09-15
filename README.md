@@ -12,9 +12,5 @@ Missing features
 
 Other ideas
 
-- replace `__getitem__` with a `.get` method
-  - use `__getitem__` for key chech (slower/safer)
-  - use `get` for direct query (no checks, faster)
-  - use `get` inside `Step` methods
-- require a `__contains__` method to check if key is valid
+- use `__contains__` method to check if key is valid, allow overriding for optimisation
 - use `partial(NewBuilder, <class>)` instead of `make_step_build`
