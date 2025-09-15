@@ -1,7 +1,12 @@
+from typing import Any
+from collections.abc import Sequence
+from functools import cached_property
+
 import numpy as np
 import pandas as pd
+import xarray as xr
 
-from tinypet.core import Source, Step, make_step_builder
+from tinypet.core import Source, Step, make_step_builder, is_time_index
 
 
 class _DateRange(Step):
@@ -38,3 +43,31 @@ class _Shuffle(Step):
 
 
 Shuffle = make_step_builder(_Shuffle)
+
+
+class _Batch(Step):
+    def __init__(self, source: Source, offsets: Sequence[Any], dim: str):
+        if is_time_index(source.index):
+            offsets = pd.to_timedelta(offsets)
+        super().__init__(source)
+        self.offsets = offsets
+        self.dim = dim
+
+    @cached_property
+    def index(self):
+        assert isinstance(self.source.index, xr.DataArray)
+        dim = f"{self.source.index.dims[0]}_2"
+        mask = (
+            (self.source.index + xr.DataArray(self.offsets, dims=dim))
+            .isin(self.source.index)
+            .all(dim=dim)
+        )
+        return self.source.index[mask]
+
+    def get(self, key):
+        samples = [self.source.get(key + offset) for offset in self.offsets]
+        # TODO add a version for numpy samples, using np.stack
+        return xr.concat(samples, dim=self.dim, join="exact")
+
+
+Batch = make_step_builder(_Batch)
