@@ -46,12 +46,11 @@ Shuffle = make_step_builder(_Shuffle)
 
 
 class _Batch(Step):
-    def __init__(self, source: Source, offsets: Sequence[Any], dim: str):
+    def __init__(self, source: Source, offsets: Sequence[Any]):
         if is_time_index(source.index):
             offsets = pd.to_timedelta(offsets)
         super().__init__(source)
         self.offsets = offsets
-        self.dim = dim
 
     @cached_property
     def index(self):
@@ -66,8 +65,33 @@ class _Batch(Step):
 
     def get(self, key):
         samples = [self.source.get(key + offset) for offset in self.offsets]
-        # TODO add a version for numpy samples, using np.stack
-        return xr.concat(samples, dim=self.dim, join="exact")
+        return tuple(samples)
 
 
 Batch = make_step_builder(_Batch)
+
+
+class _XBatch(_Batch):
+    def __init__(self, source: Source, offsets: Sequence[Any], dim: str):
+        super().__init__(source, offsets)
+        self.dim = dim
+
+    def get(self, key):
+        samples = super().get(key)
+        return xr.concat(samples, dim=self.dim, join="exact")
+
+
+XBatch = make_step_builder(_XBatch)
+
+
+class _NBatch(_Batch):
+    def __init__(self, source: Source, offsets: Sequence[Any], axis: int = 0):
+        super().__init__(source, offsets)
+        self.axis = axis
+
+    def get(self, key):
+        samples = super().get(key)
+        return np.stack(samples, axis=self.axis)
+
+
+NBatch = make_step_builder(_NBatch)
