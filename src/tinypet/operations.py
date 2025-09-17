@@ -104,10 +104,26 @@ class _Sel(SimpleOp):
 Sel = make_step_builder(_Sel)
 
 
+class _Merge(SimpleOp):
+    def apply(self, objects) -> xr.Dataset:
+        return xr.merge(objects, *self.args, **self.kwargs)
+
+
+Merge = make_step_builder(_Merge)
+
+
+class _Concat(SimpleOp):
+    def apply(self, objects) -> xr.Dataset:
+        return xr.concat(objects, *self.args, **self.kwargs)
+
+
+Concat = make_step_builder(_Concat)
+
+
 class _Select(Step):
     def __init__(self, source, varnames):
         super().__init__(source)
-        self.varnames = list(varnames)
+        self.varnames = varnames
 
     def get(self, key):
         data = self.source.get(key)[self.varnames]

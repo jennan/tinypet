@@ -37,6 +37,20 @@ class Source(ABC):
         for i in self.index:
             yield self.get(i)
 
+    def __add__(
+        self, other: Union["Source", "Builder"]
+    ) -> Union["Branch", "BranchBuilder"]:
+        # TODO replace with match statement?
+        if isinstance(other, BranchBuilder):
+            branch = BranchBuilder(self, *other.builders)
+        elif isinstance(other, Builder):
+            branch = BranchBuilder(self, other)
+        elif isinstance(other, Branch):
+            branch = Branch(self, *other.sources)
+        elif isinstance(other, Source):
+            branch = Branch(self, other)
+        return branch
+
 
 class Step(Source):
     def __init__(self, source):
@@ -63,44 +77,114 @@ class Step(Source):
         return undo_pipe
 
 
-class StepBuilder:
+class Branch(Source):
+    # TODO add undo support
+
+    def __init__(self, *sources: Source):
+        self.sources = sources
+
+    def get(self, key):
+        samples = [source.get(key) for source in self.sources]
+        return tuple(samples)
+
+    @property
+    def index(self):
+        # TODO merge indices
+        return self.sources[0].index
+
+    def __add__(
+        self, other: Union["Source", "Builder"]
+    ) -> Union["Branch", "BranchBuilder"]:
+        # TODO replace with match statement?
+        if isinstance(other, BranchBuilder):
+            branch = BranchBuilder(*self.sources, *other.builders)
+        elif isinstance(other, Builder):
+            branch = BranchBuilder(*self.sources, other)
+        elif isinstance(other, Branch):
+            branch = Branch(*self.sources, *other.sources)
+        elif isinstance(other, Source):
+            branch = Branch(*self.sources, other)
+        return branch
+
+
+class Builder(ABC):
+    @abstractmethod
+    def build(self, source: Source) -> Step:
+        pass
+
+    def __call__(
+        self, source: Union[Source, "Builder"]
+    ) -> Union[Step, "VirtualBuilder"]:
+        # TODO replace with match statement?
+        if isinstance(source, Source):
+            step = self.build(source)
+        elif isinstance(source, VirtualBuilder):
+            step = VirtualBuilder(*source.builders, self)
+        elif isinstance(source, Builder):
+            step = VirtualBuilder(source, self)
+        return step
+
+    def __ror__(self, other: Source) -> Step:
+        return self(other)
+
+    def __add__(self, other: Union["Source", "Builder"]) -> "BranchBuilder":
+        # TODO replace with match statement?
+        if isinstance(other, BranchBuilder):
+            branch = BranchBuilder(self, *other.builders)
+        elif isinstance(other, (Source, Builder)):
+            branch = BranchBuilder(self, other)
+        return branch
+
+
+class StepBuilder(Builder):
     def __init__(self, step_class, *args, **kwargs):
         self.step_class = step_class
         self.args = args
         self.kwargs = kwargs
 
-    def __call__(
-        self, source: Union[Source, "StepBuilder", "VirtualBuilder"]
-    ) -> Union[Step, "VirtualBuilder"]:
-        if isinstance(source, StepBuilder):
-            step = VirtualBuilder(source, self)
-        elif isinstance(source, VirtualBuilder):
-            step = VirtualBuilder(*source.builders, self)
-        elif isinstance(source, Source):
-            step = self.step_class(source, *self.args, **self.kwargs)
-        return step
-
-    def __ror__(self, other: Source) -> Step:
-        return self(other)
+    def build(self, source: Source) -> Step:
+        return self.step_class(source, *self.args, **self.kwargs)
 
 
-class VirtualBuilder:
-    def __init__(self, *builders):
+class VirtualBuilder(Builder):
+    def __init__(self, *builders: Builder):
         self.builders = builders
 
-    def __call__(self, source):
-        if isinstance(source, StepBuilder):
-            step = VirtualBuilder(source, *self.builders)
-        elif isinstance(source, VirtualBuilder):
-            step = VirtualBuilder(*source.builders, *self.builders)
-        elif isinstance(source, Source):
-            for builder in self.builders:
-                source = builder(source)
-            step = source
-        return step
+    def build(self, source: Source) -> Step:
+        for builder in self.builders:
+            source = builder(source)
+        return source
 
-    def __ror__(self, other: Source) -> Step:
-        return self(other)
+
+class BranchBuilder(Builder):
+    def __init__(self, *builders: Source | Builder):
+        self.builders = builders
+
+    def build(self, source: Source) -> Step:
+        if isinstance(source, Branch):
+            if len(source.sources) != len(self.builders):
+                raise ValueError(
+                    "Mismatching number of elements in successive branches."
+                )
+            pairs = zip(source.sources, self.builders)
+            steps = [builder.build(source) for source, builder in pairs]
+        else:
+            steps = []
+            for builder in self.builders:
+                if isinstance(builder, Source):
+                    step = builder
+                elif isinstance(builder, Builder):
+                    step = builder.build(source)
+                steps.append(step)
+        return Branch(*steps)
+
+    def __add__(self, other: Union["Source", "Builder"]) -> "BranchBuilder":
+        # TODO replace with match statement?
+        if isinstance(other, BranchBuilder):
+            branch = BranchBuilder(*self.builders, *other.builders)
+        elif isinstance(other, (Source, Builder)):
+            branch = BranchBuilder(*self.builders, other)
+        return branch
 
 
 def make_step_builder(cls):
